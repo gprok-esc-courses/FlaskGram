@@ -1,7 +1,9 @@
-from flask import Flask, render_template, request, g, redirect, flash, session
+from flask import Flask, render_template, request, g, redirect, flash, session, abort, jsonify
 import sqlite3 
+import os
 import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'my_secret_key'
@@ -26,7 +28,26 @@ def create_db():
 
 @app.route('/')
 def home():
-    return render_template('home.html')
+    db = get_db_connection()
+    posts = db.execute("""SELECT p.id, p.content, p.image, p.created_at, u.username
+                       FROM posts p JOIN users u ON u.id=p.users_id
+                       ORDER BY p.created_at DESC""").fetchall()
+    return render_template('home.html', posts=posts)
+
+@app.route('/api/posts')
+def api_posts():
+    db = get_db_connection()
+    posts = db.execute("""SELECT p.id, p.content, p.image, p.created_at, u.username
+                       FROM posts p JOIN users u ON u.id=p.users_id
+                       ORDER BY p.created_at DESC""").fetchall()
+    dict = {}
+    for row in posts:
+        dict[row['id']] = {'content': row['content'], 
+                           'image': 'static/uplaods/' + row['image'],
+                            'created_at': row['created_at'],
+                             'username': row['username'] }
+
+    return jsonify(dict)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -72,6 +93,42 @@ def login():
 def logout():
     session.clear()
     return redirect('/')
+
+@app.route('/create', methods=['GET', 'POST'])
+# restrict to registered users only
+def create():
+    if g.user is None: 
+        flash('You need to login first')
+        return redirect('/login')
+    if request.method == 'POST':
+        caption = request.form['caption']
+        image = request.files['image']
+        filename = secure_filename(image.filename)
+        filename = str(datetime.datetime.now().strftime('%Y%m%d%H%M%S')) + '_' + filename
+        image_path = os.path.join('static/uploads', filename)
+        image.save(image_path)
+        db = get_db_connection()
+        db.execute("INSERT INTO posts (content, image, created_at, users_id) VALUES (?, ?, ?, ?)",
+                   (caption, filename, datetime.datetime.now(), g.user['id']))
+        db.commit()
+        return redirect('/')
+
+    return render_template('create.html')
+
+
+@app.route('/user/<int:uid>')
+def user_page(uid):
+    db = get_db_connection()
+    user = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+
+    if user is None:
+        abort(404)
+    
+    posts = db.execute("SELECT * FROM posts WHERE users_id=? ORDER BY created_at DESC", 
+                       (uid,)).fetchall()
+    
+    return render_template('user.html', user=user, posts=posts)
+
 
 @app.before_request
 def load_logged_in_user():
