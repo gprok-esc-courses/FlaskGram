@@ -29,7 +29,7 @@ def create_db():
 @app.route('/')
 def home():
     db = get_db_connection()
-    posts = db.execute("""SELECT p.id, p.content, p.image, p.created_at, u.username
+    posts = db.execute("""SELECT p.id, p.content, p.image, p.created_at, u.username, p.users_id, p.likes
                        FROM posts p JOIN users u ON u.id=p.users_id
                        ORDER BY p.created_at DESC""").fetchall()
     return render_template('home.html', posts=posts)
@@ -94,6 +94,27 @@ def logout():
     session.clear()
     return redirect('/')
 
+@app.route('/search', methods=['GET', 'POST'])
+def search():
+    if request.method == 'POST':
+        term = request.form['search_term']
+        parts = term.split(':')
+        db = get_db_connection()
+        authors = []
+        posts = [] 
+        if parts[0] == 'author':
+            pattern = '%' + parts[1] + '%'
+            authors = db.execute("SELECT * FROM users WHERE username LIKE ?", (pattern,)).fetchall()
+        elif parts[0] == 'caption':
+            pattern = '%' + parts[1] + '%'
+            posts = db.execute("SELECT * FROM posts WHERE content LIKE ?", (pattern,)).fetchall()
+        else:
+            flash('Not a proper search term ' + parts[0])
+
+    return render_template('search.html', authors=authors, authors_len=len(authors), 
+                           posts=posts, posts_len=len(posts), term=term)
+
+
 @app.route('/create', methods=['GET', 'POST'])
 # restrict to registered users only
 def create():
@@ -114,6 +135,32 @@ def create():
         return redirect('/')
 
     return render_template('create.html')
+
+@app.route('/like/<int:pid>')
+def like(pid):
+    if g.user is None: 
+        flash('You need to login first')
+        return redirect('/login')
+    else:
+        db = get_db_connection()
+        uid = g.user['id']
+        already_liked = db.execute("SELECT * FROM likes WHERE users_id=? AND posts_id=?",
+                                   (uid, pid)).fetchone()
+        if already_liked:
+            db.execute("DELETE FROM likes WHERE users_id=? AND posts_id=?", (uid, pid))
+            post = db.execute("SELECT * FROM posts WHERE id=?", (pid,)).fetchone()
+            likes = post['likes'] - 1
+            db.execute("UPDATE posts SET likes=? WHERE id=?", (likes, pid))
+            db.commit()
+        else:
+            db.execute("INSERT INTO likes (users_id, posts_id, created_at) VALUES (?, ?, ?)",
+                        (uid, pid, datetime.datetime.now()))
+            post = db.execute("SELECT * FROM posts WHERE id=?", (pid,)).fetchone()
+            likes = post['likes'] + 1
+            db.execute("UPDATE posts SET likes=? WHERE id=?", (likes, pid))
+            db.commit()
+    return redirect('/')
+
 
 
 @app.route('/user/<int:uid>')

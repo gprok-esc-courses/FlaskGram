@@ -16,6 +16,7 @@ CREATE TABLE posts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     content TEXT NOT NULL,
     image TEXT NOT NULL,
+    likes INTEGER,
     created_at TIMESTAMP NOT NULL, 
     users_id INTEGER NOT NULL,
     FOREIGN KEY (users_id) REFERENCES users (id) 

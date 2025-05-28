@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="row">
+        <div class="col-md-4 mx-auto">
+            <h2>Search Term: {{ term }}</h2>
+
+            {% if authors_len != 0 %}
+                <h1>Authors Found</h1>
+                {% for author in authors %}
+
+                    <p>{{ author['username']}}</p>
+
+                {% endfor %}
+            {% endif %}
+
+            {% if posts_len != 0 %}
+                <h1>Posts Found</h1>
+                {% for post in posts %}
+
+                    <p>{{ post['content']}}</p>
+
+                {% endfor %}
+            {% endif %}
+    </div>
+</div>
+    
+{% endblock %}
