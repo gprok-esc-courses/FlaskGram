@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    
+<div class="row">
+    <div class="col-md-4 mx-auto">
+        <div class="card mb-3" style="width: 30rem;">
+                    <b class="mb-2"><a href="/user/{{ post['users_id'] }}">@{{ post['username'] }}</a></b>
+                    <img src="/static/uploads/{{ post['image'] }}" class="card-img-top" alt="...">
+                <div class="card-body">
+                    <p class="card-text">{{ post['content'] }}</p>
+                    <p>{% if g.user %}<a href="/like/{{ post['id'] }}">{% endif %}
+                    {% if post['likes'] > 0 %}
+                    <i class="fa-solid fa-heart"></i>
+                    {% else %}
+                    <i class="fa-regular fa-heart"></i> 
+                    {% endif %}
+                    {{ post['likes'] }}
+                    {% if g.user %}</a>{% endif %}</p>
+                </div>
+            </div>
+
+        <div>
+            <h3>Comments</h3>
+
+            {% if g.user %}
+                <form method="post" action="/add/comment">
+                    <input type="text" name="post_id" value="{{ post['id'] }}" hidden />
+                    <input type="text" name="new_comment" placeholder="Comment" /> 
+                    <button type="submit">Add</button> 
+                </form>
+            {% endif %}
+
+            {% for com in comments %}
+
+                <p><b>{{ com['username'] }}</b>: {{ com['content'] }}</p>
+
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+
+
+{% endblock %}

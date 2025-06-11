@@ -25,6 +25,14 @@ def create_db():
         db.executescript(sql_file.read().decode('utf-8'))
         db.commit()
 
+@app.cli.command('create-comments-table')
+def create_comments_table():
+    with app.app_context():
+        db = sqlite3.connect(app.config['DATABASE'])
+        sql_file = app.open_resource('comments.sql')
+        db.executescript(sql_file.read().decode('utf-8'))
+        db.commit()
+
 
 @app.route('/')
 def home():
@@ -162,6 +170,31 @@ def like(pid):
     return redirect('/')
 
 
+@app.route('/post/<int:pid>')
+def view_post(pid):
+    db = get_db_connection()
+    post = db.execute("""SELECT p.id, p.content, p.image, p.created_at, u.username, p.users_id, p.likes
+                       FROM posts p JOIN users u ON u.id=p.users_id
+                       WHERE p.id=?""", (pid,)).fetchone()
+    comments = db.execute("""SELECT c.id, c.content, u.username  FROM comments c 
+                          JOIN users u ON c.users_id=u.id
+                          WHERE posts_id=?""", 
+                          (pid,)).fetchall()
+    return render_template('post.html', post=post, comments=comments)
+
+@app.route('/add/comment', methods=['POST'])
+def add_comment():
+    if g.user is None: 
+        flash('You need to login first')
+        return redirect('/login')
+    comment = request.form['new_comment']
+    pid = request.form['post_id']
+    db = get_db_connection()
+
+    db.execute("INSERT INTO comments (content, users_id, posts_id, created_at) VALUES (?,?,?,?)",
+               (comment, g.user['id'], pid, datetime.datetime.now()))
+    db.commit()
+    return redirect('/post/' + str(pid))
 
 @app.route('/user/<int:uid>')
 def user_page(uid):

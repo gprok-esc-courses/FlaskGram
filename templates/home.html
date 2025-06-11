@@ -17,7 +17,9 @@
 
                 <div class="card mb-3" style="width: 30rem;">
                     <b class="mb-2"><a href="/user/{{ row['users_id'] }}">@{{ row['username'] }}</a></b>
+                    <a href="/post/{{ row['id'] }}">
                     <img src="/static/uploads/{{ row['image'] }}" class="card-img-top" alt="...">
+                    </a>
                 <div class="card-body">
                     <p class="card-text">{{ row['content'] }}</p>
                     <p>{% if g.user %}<a href="/like/{{ row['id'] }}">{% endif %}
